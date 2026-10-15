@@ -47,8 +47,8 @@ button{cursor:pointer}
 
 /* tabs */
 .tabbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--bg);margin-inline:-16px;padding:10px 16px}
-.tabs{max-width:640px;margin-inline:auto;display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--surface-2);border-radius:12px}
-.tab{min-height:44px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-weight:600;font-size:15px}
+.tabs{max-width:640px;margin-inline:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;background:var(--surface-2);border-radius:12px}
+.tab{min-height:44px;border:0;border-radius:9px;background:transparent;color:var(--muted);padding:0 4px;font-weight:600;font-size:15px}
 .tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.18)}
 
 .panel-head{display:grid;gap:6px;padding-block:20px 16px}
@@ -76,6 +76,7 @@ mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 1px}
 .browse h2,.tpanel h2{margin:0;font:400 22px/1.2 var(--font-display)}
 .browse{display:grid;gap:12px;margin-top:20px}
 .browse p{margin:0;color:var(--muted);font-size:15px}
+.browse .tnote{padding:10px 12px;border-radius:10px;background:var(--surface-2);color:var(--ink);font-size:14px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:8px}
 .gbtn{min-height:48px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-weight:600;font-size:17px;font-variant-numeric:tabular-nums}
 .gbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
@@ -122,14 +123,33 @@ mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 1px}
 .item ul{margin:0;padding-left:20px}
 .item li{overflow-wrap:anywhere}
 .empty{padding:24px 0;color:var(--muted)}
+
+/* photo groups */
+.pfilters{display:grid;gap:10px;margin-bottom:4px}
+.psearch{position:relative}
+.psearch input{width:100%;height:50px;padding:0 16px;font-size:16px;border:2px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);-webkit-appearance:none;appearance:none}
+.psearch input::placeholder{color:var(--muted)}
+.psearch input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--ring)}
+.pill.bride{background:var(--ceremony-bg);color:var(--ceremony)}
+.pill.groom{background:var(--foyer-bg);color:var(--foyer)}
+.pill.combined{background:var(--mc-bg);color:var(--mc)}
+.pgroup{display:grid;gap:8px;margin-top:28px}
+.pgroup .phead{display:grid;gap:2px}
+.pgroup h2{margin:0;font:400 23px/1.2 var(--font-display);text-wrap:balance}
+.pgroup .range{font-size:14px}
+.pcard{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:start;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.pcard .pn{font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.pcard .pd{grid-column:1;margin:0;color:var(--muted);font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+.pcard .pill{grid-column:2;grid-row:1;margin-top:2px}
 @media (prefers-reduced-motion:no-preference){.gbtn,.chip,.tab{transition:background-color .15s,border-color .15s}}
 </style>
 
 <div class="zari" aria-hidden="true"></div>
 <div class="tabbar">
   <div class="tabs" role="tablist" aria-label="Sections">
-    <button class="tab" role="tab" id="tab-table" aria-controls="panel-table" aria-selected="true" type="button">Find your table</button>
+    <button class="tab" role="tab" id="tab-table" aria-controls="panel-table" aria-selected="true" type="button">Tables</button>
     <button class="tab" role="tab" id="tab-run" aria-controls="panel-run" aria-selected="false" type="button">Run sheet</button>
+    <button class="tab" role="tab" id="tab-photos" aria-controls="panel-photos" aria-selected="false" type="button">Photos</button>
   </div>
 </div>
 
@@ -151,6 +171,7 @@ mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 1px}
       <h2>Browse by table</h2>
       <p>Tap a table number to see who is seated there.</p>
       <div class="grid" id="grid"></div>
+      <p class="tnote">Table 23 is for crew and overflow.</p>
     </div>
   </section>
 
@@ -182,104 +203,645 @@ mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 1px}
     </details>
     <div id="run"></div>
   </section>
+
+  <section id="panel-photos" role="tabpanel" aria-labelledby="tab-photos" hidden>
+    <div class="panel-head">
+      <h1>Photo groups</h1>
+      <p class="lede" id="pcount">Who to pull in for each family photo, in shooting order.</p>
+    </div>
+    <div class="pfilters">
+      <div class="fgroup" id="p-side"><span class="flabel">Side</span></div>
+      <div class="psearch"><input id="pq" type="search" inputmode="search" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Search a name or group" aria-label="Search a name or group"></div>
+    </div>
+    <div id="photolist"></div>
+  </section>
 </main>
 
 <script>
 (function(){
 var GUESTS=[["Harash","Abeygunawardhana",27],["Vihangi","Abeygunawardhana",27],["Sneha","Abraham",35],["Abarna","Ahilaeswaran",41],["Abitaa","Ahilaeswaran",40],["Archchanan","Ahilaeswaran",45],["Sinthujan","Ahilaeswaran",45],["Thiru","Ahilaeswaran",41],["Nandun","Amarasinghe",28],["Sivathas","Amirthalingam",41],["Dilan","Ananthakumar",9],["Gnana","Aran",38],["Hari","Aran",45],["Mylvaganam","Aran",38],["Ari","Arivalagan",41],["Latha","Arivalagan",41],["Lavanya","Arivalagan",44],["Sureshkumar","Arulanantham",19],["Giri","Arunagirinathan",14],["Subi","Arunagirinathan",14],["Jeyanthan","Arunthavanayagam",11],["Ratnasingham","Balakanthan",2],["Saumyaa","Balakanthan",3],["Vasuki","Balakanthan",2],["Maruthapuraveegavally","Balasingam",15],["Rasathy","Balasubramaniam",37],["Ali","Baluwala",25],["Omaya","Bandara",26],["Max","Bayly",32],["Anjali","Beames",3],["Arya","Bedi",4],["Piyush","Bedi",4],["Xavier","Bedi",4],["Vesna","Boskovska",39],["Rob","Boskovska",39],["Jeff","Bray",35],["Melinda","Bray",35],["Roza","Brezac",36],["Bodhi","Buchanan-Pascall",10],["Karthiga","Buchanan-Pascall",10],["Ryan","Buszko",25],["Lauren","Carey",9],["Mark","Cassidy",36],["Mansi","Champaneri",26],["Shanthy","Chandrakumar",14],["Bec","Cheung",32],["Ray","Cheung",36],["Chandrani","Colambage",28],["Isaac","Daly",12],["Chenuli","Dandeniya",30],["Dilan","Dandeniya",30],["Vimukthi","Dandeniya",30],["Bhamini","Daniel",18],["Rohan","Daniel",18],["Dhilki","Denagamage",28],["Lalitha","Denagamage",28],["Nihal","Denagamage",28],["Paboda","Dissanayaka",30],["Sanjeewa","Dissanayaka",30],["Alexander","Donne-Hand",25],["Abishaan","Dushyanthan",45],["Dushy","Dushyanthan",16],["Jasintha","Dushyanthan",16],["Anjali","Ebenezer",12],["Jelwin","Edwin",44],["Joanne","Francis",26],["Eshara","Gajadeera",24],["Niren","Gajadeera",29],["Saratha","Ganesamoorthy",37],["Sinnathamby","Ganesamoorthy",37],["Ganga","Ganesvaran",31],["Senthini","Ganesvaran",31],["Athira","Gangadharan",25],["Nisha","Gnanakanthan",4],["Piravien","Gnanakanthan",4],["Priya","Gnanakanthan",4],["Ratnasingham","Gnanakanthan",1],["Priyankan","Gopalasingam",2],["Amsavi","Gopalasingam",44],["Sivarokini","Gopalasingam",2],["Nicole Ann","Gorospe",32],["Jason","Green",39],["Michelle","Green",39],["Lakshmi","Guruparan",43],["Nagarajah","Guruparan",43],["Malka","Halgamuge",13],["Saman","Halgamuge",13],["Rachael","Hart",12],["Colin","Henadeera",26],["Dulain","Hidellearachchi",30],["Gayani","Hidellearachchi",30],["Nanda","Hidellearachchi",30],["Sue","Hussein",39],["Murali","Ignatious",41],["Shobetha","Ignatious",27],["Vaisarli","Ignatious",40],["Dhamy","Illungko",2],["Hari","Illungko",21],["Hema","Indrasamy",3],["Rehka","Indrasamy",3],["Saroja","Indrasamy",1],["Mayoori","Inthiralingam",22],["Kidnar","Inthiralingam",16],["Thiruvarangan","Inthiralingam",45],["Uthayarani","Inthiralingam",16],["Saurabh","Jain",25],["Ganesh","Jayaganesh",42],["Gayathri","Jayaganesh",40],["Selvi","Jayaganesh",42],["Devaki","Jayamanoharan",16],["Sundar","Jayamanoharan",16],["Vibooshana","Jayamanoharan",44],["Lakshmi","Jayasinghe",29],["Hari","Jeevakumar",27],["Ratnasingham","Jeyakandan",1],["Suthesh","Jeyakandan",3],["Vanitha","Jeyakandan",1],["Jayanthi","Jeyakumar",38],["Sivaperuman","Jeyakumar",38],["Gowtham","Jeyanathan",10],["Murugesu","Jeyanathan",6],["Prasanna","Jeyanathan",10],["Thilaga","Jeyanathan",6],["Dinesh","Jeyanthan",18],["Gochika","Jeyanthan",20],["Gochikan","Jeyanthan",20],["Siyama","Jeyanthan",18],["Sukithini","Jeyanthan",11],["Kumaran","Jeyapalan",10],["Murugesu","Jeyapalan",6],["Raani","Jeyapalan",6],["Kawjala","Jeyaraj",2],["Nirmala","Jeyarajah",14],["Selvanathan","Kandiah",19],["Shasi","Kathir",43],["Sayan","Kengatharan",20],["Shamya","Kengatharan",20],["Theepa","Kengatharan",8],["Mithil","Kishto",26],["Akhil","Kondam",25],["Sahadevan","Krishshanthan",43],["Thenmozhi","Krishshanthan",43],["Nithiya","Kugathas",31],["Kengatharan","Kulasegaram",8],["Buddhi","Kulathunga",27],["Ezra","Kulathunga",27],["Gamini","Kulathunga",24],["Hannah","Kulathunga",27],["Kavindu","Kulathunga",27],["Lahiru","Kulathunga",24],["Sandya","Kulathunga",24],["Shahan","Kulathunga",24],["Shanuka","Kulathunga",24],["Zara","Kulathunga",27],["Sivasuthan","Kulendrasingam",38],["Kishan","Kumaratheesan",22],["Shanna","Lam",9],["Devrath","Latchan",12],["Joy","Lee",36],["Vinnie","Liu",32],["Gavin","Lui",32],["Raj","Mahalingam",41],["Bhavin","Maisuria",3],["Chavin","Malawaraarachchi",12],["Raveendiran","Manickavasagar",18],["Catherine","Manning",12],["Joel","Manning",12],["Mallika","Manoharan",34],["Mano","Manoharan",34],["Janu","Matheepan",33],["Premika","Matheepan",33],["Satvika","Matheepan",33],["Sivam","Matheepan",33],["Brendon","Matthews",36],["Vanessa","Matthews",36],["John","McDonald",39],["Melissa","McDonald",39],["Keerththana","McVilly",4],["Matthew","McVilly",4],["Raahi","McVilly",4],["Nagarajah","Meera",31],["Sugirtha","Moganadas",37],["Murugesu","Moganadas",37],["Chithra","Mohanakumar",34],["Mohan","Mohanakumar",34],["Babeendra","Mohanaraj",7],["Mohan","Mohanaraj",7],["Amrutha","Murali",40],["Parpatha","Murali",31],["Gowri","Murugathas",6],["Raja","Murugathas",6],["Sindu","Murugathas",4],["Naren","Murugesu",17],["Yogan","Murugesu",37],["Kalai","Murugiah",43],["Vigine","Murugiah",43],["Ahlini","Nadarajah",22],["Asha","Nadarajah",15],["Gopalasingam","Nadarajah",2],["Jasotha","Nadarajah",15],["Subanesan","Nadesapillai",43],["Wiji","Nadesapillai",43],["Dishan","Nagahawatta",29],["Diyana","Nagahawatta",29],["Kalum","Nagahawatta",29],["Suboda","Nagahawatta",29],["Karthica","Nanthakumaran",40],["Lalitha","Nanthakumaran",38],["Logetha","Nanthakumaran",40],["Nanda","Nanthakumaran",38],["Mithra","Narendran",10],["Ahthavan","Narendren",44],["Duraisamy","Narendren",14],["Kala","Narendren",17],["Pathamaja","Narendren",14],["Keerthi","Nathan",9],["Kugathas","Navaneetharaja",31],["Aaron","Nguyen",22],["Ragini","Nithianandan",34],["Selva","Nithianandan",34],["Ryan","Ong",9],["Palani","Palaniswami",35],["Prema","Palaniswami",35],["Angelica","Panopoulos",9],["Anushika","Pareethan",33],["Atharv","Pareethan",33],["Atharvaa","Pareethan",33],["Jaydon","Patel",26],["Dilky","Pathmaraj",19],["Mathurisha","Pathmaraj",21],["Angelo","Peiris",13],["Pareethan","Perampalam",33],["Jason","Perera",26],["Raveen","Perera",12],["Ananthan","Pillai",19],["Biruntha","Pirapakaran",11],["Piraba","Pirapakaran",11],["Vinujan","Pirapakaran",11],["Geetha","Piyasena",41],["Laknasha","Piyasena",44],["Sarath","Piyasena",41],["Venthan","Ponniah",31],["Kirishnni","Prabagar",21],["Aruntha","Prabaharan",17],["Keerthi","Prabaharan",17],["Kian","Prabaharan",17],["Praba","Prabaharan",17],["Erosha","Premaratne",13],["Malin","Premaratne",13],["Kasuni","Punchi",28],["Nandasiri","Punchi",28],["Selvadurai","Puveendran",38],["Tharmini","Puveendran",38],["Naveen","Rachagundla",25],["Selvi","Ragulan",2],["Raja","Rajalingam",6],["Tharshini","Rajalingam",6],["Bhavani","Rajarajan",42],["Vinusakini","Rajarajan",40],["Murali","Rajaratnam",31],["Rajarajan","Rajaratnam",42],["Anushya","Rajmohan",19],["Shiva","Rajmohan",45],["Haarshini","Rajmohan",21],["Selvarajah","Rajmohan",19],["Jeyarajah","Ramanathan",14],["Senthooran","Ramanathan",8],["Charvi","Rambojun",32],["Ampalavanapillai","Ramesh",7],["Rajeswary","Ramesh",2],["Mohana","Ranjan",18],["James","Ranjith",35],["Aanya","Rasakulasingam",5],["Amaira","Rasakulasingam",5],["Kiaan","Rasakulasingam",5],["Lukshini","Rasakulasingam",5],["Sugirtha","Rasakulasingam",1],["Suraj","Rasakulasingam",5],["Sugul","Rasakulasingam",3],["Nadarajah","Rasakulasingam",1],["Yogenthiran","Ratnasingam",6],["Prasan","Ratnayake",26],["Kajaluxmy","Raveendiran",18],["Sanjiv","Raveendiran",45],["Sai-Nivaeithen","Ravichandira",44],["Anuradha","Ravichandran",13],["Ravi","Ravichandran",13],["Ganan","Ravindran",22],["Sreedhar","Reddy",25],["Shiranee","Rexley",37],["Ainul","Rizwana",7],["Ben","Rubinstein",36],["Juliet","Rubinstein",36],["Savindee","Rupasinghe",25],["Jacque","Saldanha",9],["Simran","Sampath Kumar",9],["Sathiyamurthy","Sangarapillai",8],["Adam","Sansome",39],["Wendy","Sansome",39],["Ragu","Santhanaraguraj",34],["Surenthini","Santhanaraguraj",34],["Sivathasan","Saravanabavanathan",42],["Jayakumari","Sasikaran",17],["Sasi","Sasikaran",17],["Kumuthini","Sathiyamurthy",8],["Anthony","Sathiyaseelan",13],["Shanthy","Sathiyaseelan",13],["Elil","Sathiyendra",15],["Mylvaganam","Sathiyendra",15],["Navaneet","Sathiyendra",21],["Nagarajah","Satish",31],["Aariyan","Satkunam",7],["Jeeviny","Satkunam",7],["Sat","Satkunam",17],["Shiranee","Satkunam",17],["Harishni","Sayanthan",8],["Kirittika","Sayanthan",8],["Kisheni","Sayanthan",8],["Sayanthan","Sayanthan",8],["Suthakaran","Selladurai",34],["Krishniya","Selvanathan",21],["Ramya","Selvanathan",22],["Shanthi","Selvanathan",19],["Piragalathan","Selvanayagam",7],["Dravin","Selvarajan",10],["Kali","Selvarajan",10],["Karthi","Selvarajan",10],["Susy","Selvarajan",10],["Priyanthi","Senadeera",28],["Wasantha","Senadeera",28],["Indira","Senaratne",13],["Kavya","Senthilkumar",24],["Hareshan","Senthooran",3],["Sharmila","Senthooran",8],["Tharanya","Senthooran",3],["Thenishan","Senthooran",20],["Thilakshan","Senthooran",20],["Thilakshana","Senthooran",20],["Jenani","Shankar",14],["Maha","Sharabinth",15],["Shiyaam","Sharabinth",22],["Jenine","Sharabinth",15],["Sharan","Sharabinth",45],["Aadhya","Sharangan",7],["Vanathy","Shasitharan",43],["Anisha","Shrestha",32],["Arpana","Sivakaran",11],["Lakshaya","Sivakaran",11],["Siva","Sivakaran",11],["Thakshaya","Sivakaran",11],["Thirukshan","Sivakaran",11],["Danusha","Sivakumar",5],["Kowselya","Sivakumar",5],["Santha","Sivakumar",1],["Saravanan","Sivakumar",22],["Sivajini","Sivakumaran",15],["Meera","Sivan",1],["Lojini","Sivaraman",44],["Sharuka","Sivasuthan",40],["Sugarna","Sivasuthan",38],["Manisha","Sivathas",44],["Santhi","Sivathas",41],["Thuvaragan","Sivathas",45],["Subramaniam","Sivathasan",42],["Yaso","Sivathasan",42],["Tatjana","Skabar",32],["Daniela","Skafidas",35],["Stan","Skafidas",35],["Kogul","Srikandabala",21],["Ratnasingham","Srikanthan",1],["Rohini","Srikanthan",1],["Arani","Srikanthan",3],["Sri","Srirankan",7],["Isitha","Subasinghe",12],["Mandy","Sun",32],["Aakriti","Suresh",5],["Aaruban","Suresh",2],["Aarya","Suresh",5],["Sivajini","Sureshkumar",42],["Suresh","Sureshkumar",42],["Sharmila","Suthakaran",34],["Aydin","Tahir",39],["Shoumyaa","Thanaskanda",44],["Thillai","Thangarajaj",14],["Ranjan","Tharmakulasingam",18],["Suresh","Thavaraj",5],["Charanja","Thavendran",21],["Sathya","Thavendran",21],["Thave","Thavendran",16],["Vasanthy","Thavendran",16],["Thabo","Thayalakumaran",18],["Thayal","Thayalakumaran",18],["Varshini","Thayalakumaran",22],["Vaisnavi","Thayaparan",21],["Manikawasaker","Thayaparan",15],["Peranevi","Thayaparan",22],["Suganthini","Thayaparan",15],["Abinayan","Thillainadarajah",45],["Vanitha","Thillainadarajah",14],["Balasaraswathy","Thurairajah",19],["Dinushi","Tilakaratna",12],["Thet","Tint",9],["Harry","Tong",9],["Samuel","Turmine",28],["Ranjith","Unnithan",35],["Nikita","Velangi",25],["Dawina","Venthan",31],["Lithursh","Vijayakanth",20],["Lithurshigaa","Vijayakanth",20],["Lithurshny","Vijayakanth",20],["Rasathurai","Vijayakanth",33],["Sasikala","Vijayakanth",33],["Anusha","Vijayakumar",16],["Thesomayam","Vijayakumar",16],["Sharangan","Vithiyatharan",7],["Kanisha","Vyrum",40],["Nathan","Vyrum",19],["Vathana","Vyrum",19],["Camalin","Walpitagama",30],["Deepika","Wattuhewa",29],["Wijitha","Wattuhewa",29],["Sarini","Wijerathne",26],["Aruna","Wijesinghe",29],["Jeevani","Wijesinghe",29],["Avishka","Wijesundara",26],["Mylvaganam","Wimaleswaran",37],["Yasotha","Wimaleswaran",37],["Elaine","Wong",36],["Tyndall","Ye",32],["Jamuna","Yoganathan",37],["Sriranjani","Yogenthiran",6]]; // [first, last, table]
 
+var PHOTOS=[["Bride","Pre-ceremony morning - Brides Home","Parents","Geetha & Thas"],["Bride","Pre-ceremony morning - Brides Home","Bride Sister","Anika"],["Bride","Pre-ceremony morning - Brides Home","Nirmalathas Family","Thas, Geetha & Anika"],["Bride","Pre-ceremony morning - Brides Home","Extended Nirmalathas Family","Thas, Geetha, Anika, Priyankan, Ishmikka"],["Bride","Pre-ceremony morning - Brides Home","Sister Family","Anika, Priyankan, Ishmikka"],["Bride","Pre-ceremony morning - Brides Home","Niece","Ishmikka"],["Bride","Pre-ceremony morning - Brides Home","Girls","Anika, Geetha, Ishmikka"],["Bride","Pre-ceremony morning - Brides Home","Bride, Sister & Mum","Anika & Geetha"],["Bride","Pre-ceremony morning - Brides Home","Bride Mum","Geetha"],["Bride","Pre-ceremony morning - Brides Home","Bride Dad","Thas"],["Bride","Pre-ceremony morning - Brides Home","Bride, Dad & sister","Thas, Anika & Abhisha"],["Bride","Pre-ceremony morning - Brides Home","Bride, Dad & sister","Thas, Anika, Abhisha, Ishmikka"],["Bride","Pre-ceremony morning - Brides Home","Flowers Girls","Aanya, Aarya, Amaira, Aakriti"],["Bride","Pre-ceremony morning - Brides Home","Flowers Boys","Kiaan & Raahi"],["Bride","Pre-ceremony morning - Brides Home","Flower Girls & Boys","Aanya, Aarya, Amaira, Aakriti, Kiaan, Raahi"],["Bride","Pre-ceremony morning - Brides Home","All children","Aanya, Aarya, Amaira, Aakriti, Kiaan, Raahi, Ishmikka"],["Bride","Pre-ceremony morning - Brides Home","All","Anyone who is present in the morning for a large group shot"],["Groom","Pre-ceremony morning - Grooms Home","Parents","Krish & Shyamalee"],["Groom","Pre-ceremony morning - Grooms Home","Groom Brother","Niren"],["Groom","Pre-ceremony morning - Grooms Home","Groom Older Sister","Emalka"],["Groom","Pre-ceremony morning - Grooms Home","Groom Younger Sister","Eshara"],["Groom","Pre-ceremony morning - Grooms Home","Groom Sisters","Emalka, Eshara"],["Groom","Pre-ceremony morning - Grooms Home","Gajadeera Family","Krishantha, Shyamalee, Niren, Emalka, Eshara"],["Groom","Pre-ceremony morning - Grooms Home","Gajadeera Extended Family","Krishantha, Shyamalee, Niren, Emalka, Shahan, Lahiru, Eshara, Shanuka"],["Groom","Pre-ceremony morning - Grooms Home","Groom Nephews","Shahan, Shanuka"],["Groom","Pre-ceremony morning - Grooms Home","Groom Older Sister Family (Kulathunga)","Emalka, Lahiru, Shahan, Shanuka"],["Groom","Pre-ceremony morning - Grooms Home","Groom Girls only","Emalka, Eshara, Shyamalee"],["Groom","Pre-ceremony morning - Grooms Home","Groom Boys only","Niren, Lahiru, Shahan, Shanuka"],["Groom","Pre-ceremony morning - Grooms Home","Hindu Wedding Grooms men(maapilai Tholan)","Aaruban"],["Groom","Pre-ceremony morning - Grooms Home","Thozhan family","Nish, Aaruban, Danu akka and Suresh"],["Groom","Pre-ceremony morning - Grooms Home","Groom Dad",""],["Groom","Pre-ceremony morning - Grooms Home","Groom Mum",""],["Groom","Pre-ceremony morning - Grooms Home","All","Anyone who is present in the morning for a large group shot"],["Bride","Post Ceremony (pre guest wishing if possible)","Parents","Geetha & Thas"],["Bride","Post Ceremony (pre guest wishing if possible)","Bride Sister","Anika"],["Bride","Post Ceremony (pre guest wishing if possible)","Bride Sister, couples","Anika, Priyankan"],["Bride","Post Ceremony (pre guest wishing if possible)","Nirmalathas Family","Thas, Geetha & Anika"],["Bride","Post Ceremony (pre guest wishing if possible)","Nirmalathas Extended Family","Thas, Geetha, Anika, Priyankan, Ishmikka"],["Bride","Post Ceremony (pre guest wishing if possible)","Bride Sister Family","Anika, Priyankan, Ishmikka"],["Groom","Post Ceremony (pre guest wishing if possible)","Parents","Krishantha, Shyamalee"],["Groom","Post Ceremony (pre guest wishing if possible)","Groom Siblings","Eshara, Emalka, Niren"],["Groom","Post Ceremony (pre guest wishing if possible)","Kulathunga Family","Emalka, Lahiru, Shahan, Shanuka"],["Groom","Post Ceremony (pre guest wishing if possible)","Gajadeera Family (siblings only)","Krishantha, Shyamalee, Eshara, Emalka, Niren, Lahiru, Shahan, Shanuka"],["Groom","Post Ceremony (pre guest wishing if possible)","Gajadeera Family Extended","Krishantha, Shyamalee, Eshara, Emalka, Niren"],["Combined","Post Ceremony (pre guest wishing if possible)","Both sides Parents with bride and groom",""],["Combined","Post Ceremony (pre guest wishing if possible)","Both sides Parents and Siblings with bride and groom",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Srikanthan Family",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Indrasamy Family",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Sivakumar Family",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Jeyakandan Family",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Rasakulasingam Family",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Balakanthan Family",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Gnanakanthan Family",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Ratnasingham Brothers",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Ratnasingham Siblings","Bride Mum brothers and sisters"],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Ratnasingham Couple","Bride Mum brothers and sisters with their partners"],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Ratnasingham Family (everyone)","(~50 people)"],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Family All (Muttu People)","(~80 people - not sure if this photo will work on the stage but let's try!)"],["Bride","Post Ceremony (Post guest wishing and rice blessing)","First Cousins(ratnasingham) and Niece/Nephews","(~30 people)"],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Ratnasingham Sisters",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Murugesu +Navaratnam Aunty and Uncles (Mums cousins)","(~20 people)"],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Murugesu + Navaratnam Family All","(~35 people)"],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Rajesh Periyamma",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Internationals",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Ramesh",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Sharangan + Aadhya",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Jeeviny + Aariyan",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Babee aththai",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Senthooran (Kodikamam) Family",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Karan Family",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Paree Family",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Gopalasingam Family",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Pera Gang (Parents)",""],["Bride","Post Ceremony (Post guest wishing and rice blessing)","Appa Batchmates",""],["Groom","Post Ceremony (Post guest wishing and rice blessing)","Nish Friends",""],["Groom","Post Ceremony (Post guest wishing and rice blessing)","Lahiru Parents",""]]; // [side, timing, group, details]
+
 var RUN=[
-{phase:'Morning setup',items:[
- {t:'06:00',w:'Venue',cats:['ceremony','foyer'],text:'Sinna mama and Rasa mama drop off wedding items at the hall.',sub:[
-  {h:'Stage setup',l:['Rose petals for thali: move petals onto tray','Coconut cutting headband: place near front of stage','Manjal rice: place rice in ziploc bag onto tray','Aiyer items tray: place on stage','Garlands: 1 red, 1 white on stage on tray (other two in bridal room)']},
-  {h:'Front foyer',l:['Flower girl trays','Flowers for flower girls','Foyer girl trays','Foyer girl items']},
-  {h:'Bridal room',l:['Alaathi tray','2 other garlands (1 red, 1 white)']}]},
- {t:'06:00',w:'Venue',cats:['food'],text:'Senthooran and Thilakshan drop palakaram at the hall.',sub:[
-  {h:'Coffee room',l:['Palakaram','Milk toffee','Milk toffee trays']}]},
- {t:'06:30',w:'Bride',text:'House shots and bridal portrait.'},
- {t:'06:45',w:'Bride',text:'Bridal portrait.'},
- {t:'07:00',w:'Venue',cats:['music'],text:'Colin: sound and DJ setup. 1 clip-on mic, another 1 for the MC, 3 stand mics for live instrument.'},
- {t:'07:00',w:'Bride',text:'Bride with parents and sister photos.'},
- {t:'07:10',w:'Groom',text:'Groom portrait.'},
- {t:'07:15',w:'Bride',text:'Flower girls and extended family photos.'},
- {t:'07:30',w:'Bride',text:'Other shots.'},
- {t:'07:30',w:'Groom',text:'Groom family photos and Tholan.'},
- {t:'07:35',w:'Bride',text:'Amma to check gold coin with Meera.'},
- {t:'07:45',w:'Groom',text:'Praying and putting on the thalappa (groom’s headgear), thirunooru on forehead, pin salwai, parents’ blessings.'},
- {t:'07:50',w:'Bride',text:'Bride and family leave for the venue.'}
-]},
-{phase:'Getting set at the venue',items:[
- {t:'08:00',w:'Venue',cats:['food'],text:'Sinna mama and Rasa mama check tables match the floor plan and menu cards are on the tables.'},
- {t:'08:00',w:'Groom',text:'Final photos and araathi.'},
- {t:'08:15',w:'Venue',cats:['foyer'],text:'Rehka and Hema prepare the flower girl trays and foyer girl trays. Flower girl trays can stay in the bridal suite room.',sub:[
-  {h:'Flower girls',l:['5 x flower girl trays','1 x vizhakku girl with tray (oil and thithi)']},
-  {h:'Foyer girl setup',l:['Katkandu on one tray','Flowers on one tray','Pottu tray: the ziploc bag has viboothi, kungumam and santhanam. Mix and place into the brass containers','Fill paneer chembu with 90% water and a dash of rose water, then place on tray']}]},
- {t:'08:15',w:'Bride',text:'Bride’s family arrives at the venue. Amma and Appa check the venue is all okay with the mandap. Bridal second saree suitcase dropped in the bridal room.'},
- {t:'08:15',w:'Groom',text:'Exit.'},
- {t:'08:30',w:'Venue',cats:['ceremony'],text:'Sugirtha and Meera prepare the alaathi tray for groom arrival.'},
- {t:'08:40',w:'Venue',cats:['foyer'],text:'Rehka and Hema get the foyer girls ready at the entrance. Sugul and Abi are ready to assist with seating, and Rehka and Hema join after.'}
-]},
-{phase:'Groom’s arrival',items:[
- {t:'09:00',w:'Groom',text:'Groom arrives at the venue and waits in the car.'},
- {t:'09:05',w:'Venue',cats:['ceremony'],text:'Schedule helpers find Sugirtha and Meera to collect the araathi tray and garland for groom arrival.'},
- {t:'09:05',w:'Groom',text:'Appa checks the groom’s dressing is okay.'},
- {t:'09:10',w:'Venue',cats:['mc'],text:'MC welcome and housekeeping. The groom will enter shortly. Please remain seated for the entrance.'},
- {t:'09:10',w:'Groom',cats:['ceremony','music'],text:'Groom’s family waits ready for the entrance, along with the family procession, drum and nathaswaram.'},
- {t:'09:15',w:'Venue',cats:['ceremony'],text:'Groom arrival.',sub:[{h:'Araathi and garland',l:['Sugirtha and Meera: araathi','Thas: white garland']}]},
- {t:'09:15',w:'Groom',cats:['ceremony'],text:'Groom araathi, washing of feet by groomsmen, ring gifted to groomsmen and garland offered by the bride’s father to welcome the groom.'},
- {t:'09:15',w:'Venue',cats:['food'],text:'Breakfast snack served to guests.'},
- {t:'09:25',w:'Venue',cats:['ceremony'],text:'Schedule helpers notify Jeyapalan of the coconut cut and seat him theatre style near the stage.'}
-]},
-{phase:'Ceremony',items:[
- {t:'09:30',w:'Venue',cats:['ceremony'],text:'Ganesh puja. Jeyapalan coconut cut.'},
- {t:'09:30',w:'Venue',cats:['foyer'],text:'Schedule helpers relieve the foyer girls and take over the seating chart.'},
- {t:'09:40',w:'Venue',cats:['ceremony'],text:'Schedule helpers make sure the 5 ladies are ready.',sub:[{h:'Ladies',l:['Rohini','Vanitha','Tharshini','Rani','Thilaga']}]},
- {t:'09:45',w:'Venue',cats:['ceremony'],text:'Palikasthapanam with the 5 ladies.'},
- {t:'09:45',w:'Venue',cats:['ceremony'],text:'Schedule helpers make sure Jeyanathan is by the stage.'},
- {t:'09:50',w:'Venue',cats:['ceremony'],text:'Racha bandhan (bangle/kaapu kattudhal). Jeyanathan coconut cut.'},
- {t:'09:50',w:'Venue',cats:['mc','music'],text:'MC gives Colin a heads-up of the song for the bridal entry.'},
- {t:'09:55',w:'Venue',cats:['mc'],text:'MC announces the bridal entry. Guests to be seated.'},
- {t:'10:00',w:'Venue',cats:['ceremony','music'],text:'Bridal entrance (first saree). Cue music with the DJ once the party is ready.'},
- {t:'10:00',w:'Venue',cats:['food'],text:'Entree served.'},
- {t:'10:05',w:'Venue',cats:['ceremony'],text:'Schedule helpers make sure the 5 ladies are ready.',sub:[{h:'Ladies',l:['Gowri','Danu','Theepa','Keetha','Sugirtha']}]},
- {t:'10:10',w:'Venue',cats:['ceremony'],text:'Palikasthapanam with the 5 ladies.'},
- {t:'10:10',w:'Venue',cats:['ceremony'],text:'Schedule helpers make sure Balakanthan is near the stage and ready.'},
- {t:'10:15',w:'Venue',cats:['ceremony'],text:'Racha bandhan (bangle/kaapu kattudhal). Balakanthan coconut cut.'},
- {t:'10:20',w:'Venue',cats:['ceremony'],text:'Schedule helpers make sure Jeyakandan is near the stage and ready.'},
- {t:'10:25',w:'Venue',cats:['ceremony'],text:'Kanyathaanam. Jeyakandan coconut cut.'},
- {t:'10:25',w:'Bride',text:'Srikanthan.'},
- {t:'10:30',w:'Venue',cats:['ceremony'],text:'Bride leaves for koorai change.'},
- {t:'10:30',w:'Venue',cats:['food'],text:'Theepa and Keetha prepare the milk toffee trays.'},
- {t:'10:45',w:'Venue',cats:['ceremony'],text:'Kamakshi vizhakku ready for Anika. Hema holds it for Anika and stays on stage to help with the thali screw. Petals for blessing on stage.'},
- {t:'10:50',w:'Venue',cats:['mc','music'],text:'MC gives Colin a heads-up of the song for the bridal entry.'},
- {t:'10:55',w:'Venue',cats:['mc'],text:'MC announces the bridal entry. Guests to be seated.'},
- {t:'10:55',w:'Venue',cats:['ceremony'],text:'Danu and Tharanya collect flower petals off the stage.'},
- {t:'10:57',w:'Venue',cats:['ceremony'],text:'Danu and Tharanya give flower petals to close family for thaali blessings.'},
- {t:'11:00',w:'Venue',cats:['ceremony','music'],text:'Bride re-entry. Cue music with the DJ.'},
- {t:'11:00',w:'Venue',cats:['ceremony'],text:'Schedule helpers make sure Srikanthan is near the stage and ready.'},
- {t:'11:00',w:'Venue',cats:['food'],text:'Theepa and Keetha coordinate sweets serving after the thaali is tied.',sub:[{h:'Girls serving',l:['Thilakshana','Shamya','Kali','Aaki','Tharanya']}]},
- {t:'11:03',w:'Venue',cats:['mc'],text:'Once the bride is seated, MC announces that thali tying will happen soon. Guests who want to wish can come forward.'},
- {t:'11:05',w:'Venue',cats:['ceremony'],text:'Thali tying. Srikanthan coconut cut.'},
- {t:'11:30',w:'Venue',cats:['food'],text:'Karan confirms lunch is ready and informs Anjali (MC) and Anika.'}
-]},
-{phase:'Lunch and blessings',items:[
- {t:'11:40',w:'Venue',text:'Ceremony complete. Couple photos, then parents and siblings photos.'},
- {t:'11:40',w:'Venue',cats:['mc','food'],text:'Whenever lunch is ready, MC announces that guests can have lunch and asks immediate family to remain for blessings.'},
- {t:'11:50',w:'Venue',cats:['ceremony'],text:'Schedule helper instructs Hareshan, Tharanya and Anjali to rotate holding rice for blessings.'},
- {t:'11:55',w:'Venue',cats:['ceremony'],text:'Immediate family blessings. No photos yet.'},
- {t:'12:05',w:'Venue',cats:['mc'],text:'MC announces guests can wish the couple.'},
- {t:'12:40',w:'Venue',cats:['food'],text:'Palaharam serving at the front: Thilakshana and Shamya.'},
- {t:'13:05',w:'Venue',cats:['food'],text:'Couple eat lunch. Any family members who haven’t eaten should eat as well.'}
-]},
-{phase:'Photos and close',items:[
- {t:'13:20',w:'Venue',text:'Group photos. Sugul and Rehka use the photo groups to coordinate. Ask Eshara to manage the Nish side.'},
- {t:'14:00',w:'Venue',text:'Couple photos in the venue: mandap, little courtyard, foyer and out the front.'},
- {t:'14:30',w:'Venue',text:'Service end.'},
- {t:'15:00',w:'Venue',text:'Leave the venue. Rasa mama takes the gifts. Senthooran and Thilakshan assist with loading items into the Kluger and cars.'}
-]}
+{
+"phase": "Morning setup",
+"items": [
+{
+"t": "06:00",
+"w": "Venue",
+"text": "Sinna mama and Rasa mama drop off wedding items at the hall.",
+"sub": [
+{
+"h": "Stage setup",
+"l": [
+"Rose petals for thali: move petals onto tray",
+"Coconut cutting headband: place near front of stage",
+"Manjal rice: place rice in ziploc bag onto tray",
+"Aiyer items tray: place on stage",
+"Garlands: 1 red, 1 white on stage on tray (other two in bridal room)"
+]
+},
+{
+"h": "Front foyer",
+"l": [
+"Flower girl trays",
+"Flowers for flower girls",
+"Foyer girl trays",
+"Foyer girl items"
+]
+},
+{
+"h": "Bridal room",
+"l": [
+"Alaathi tray",
+"2 other garlands (1 red, 1 white)"
+]
+}
+]
+},
+{
+"t": "06:00",
+"w": "Venue",
+"text": "Senthooran and Thilakshan drop palakaram at the hall.",
+"sub": [
+{
+"h": "Coffee room",
+"l": [
+"Palakaram",
+"Milk toffee",
+"Milk toffee trays"
+]
+}
+]
+},
+{
+"t": "06:30",
+"w": "Bride",
+"text": "House shots and bridal portrait."
+},
+{
+"t": "06:45",
+"w": "Bride",
+"text": "Bridal portrait."
+},
+{
+"t": "07:00",
+"w": "Venue",
+"text": "Colin: sound and DJ setup. 1 clip-on mic, another 1 for the MC, 3 stand mics for live instrument."
+},
+{
+"t": "07:00",
+"w": "Bride",
+"text": "Bride with parents and sister photos."
+},
+{
+"t": "07:10",
+"w": "Groom",
+"text": "Groom portrait."
+},
+{
+"t": "07:15",
+"w": "Bride",
+"text": "Flower girls and extended family photos."
+},
+{
+"t": "07:30",
+"w": "Bride",
+"text": "Other shots."
+},
+{
+"t": "07:30",
+"w": "Groom",
+"text": "Groom family photos and Tholan."
+},
+{
+"t": "07:35",
+"w": "Bride",
+"text": "Amma to check gold coin with Meera."
+},
+{
+"t": "07:45",
+"w": "Groom",
+"text": "Praying and putting on the thalappa (groom’s headgear), thirunooru on forehead, pin salwai, parents’ blessings."
+},
+{
+"t": "07:50",
+"w": "Bride",
+"text": "Bride and family leave for the venue.",
+"sub": [
+{
+"h": "Wedding car",
+"l": [
+"Abhisha, Geetha, Thas"
+]
+},
+{
+"h": "Van",
+"l": [
+"Pri, Meera, Selvi, Kawjala, Sriranjani, Yogenthiran, Sri"
+]
+},
+{
+"h": "Tiguan",
+"l": [
+"Anika, Ishmikka, Aarya, Aaki"
+]
+}
+]
+}
+]
+},
+{
+"phase": "Getting set at the venue",
+"items": [
+{
+"t": "08:00",
+"w": "Venue",
+"text": "Sinna mama and Rasa mama check tables match the floor plan and menu cards are on the tables."
+},
+{
+"t": "08:00",
+"w": "Groom",
+"text": "Final photos and araathi."
+},
+{
+"t": "08:15",
+"w": "Venue",
+"text": "Rehka and Hema prepare the flower girl trays and foyer girl trays. Flower girl trays can stay in the bridal suite room.",
+"sub": [
+{
+"h": "Flower girls",
+"l": [
+"5 x flower girl trays",
+"1 x vizhakku girl with tray (oil and thithi)"
+]
+},
+{
+"h": "Foyer girl setup",
+"l": [
+"Katkandu on one tray",
+"Flowers on one tray",
+"Pottu tray: the ziploc bag has viboothi, kungumam and santhanam. Mix and place into the brass containers",
+"Fill paneer chembu with 90% water and a dash of rose water, then place on tray"
+]
+}
+]
+},
+{
+"t": "08:15",
+"w": "Bride",
+"text": "Bride’s family arrives at the venue. Amma and Appa check the venue is all okay with the mandap. Bridal second saree suitcase dropped in the bridal room."
+},
+{
+"t": "08:15",
+"w": "Groom",
+"text": "Exit."
+},
+{
+"t": "08:30",
+"w": "Venue",
+"text": "Sugirtha and Meera prepare the alaathi tray for groom arrival: katpuram and vethilai."
+},
+{
+"t": "08:40",
+"w": "Venue",
+"cats": [
+"foyer"
+],
+"text": "Rehka and Hema get the foyer girls ready at the entrance: Shamya, Thilakshana, Tharanya and Kali. Sugul and Abi are ready to assist with seating, and Rehka and Hema join after.",
+"sub": [
+{
+"h": "Welcoming guests",
+"l": [
+"Geetha, Thas, Rasa mama and Vanitha mami"
+]
+}
+]
+}
+]
+},
+{
+"phase": "Groom’s arrival",
+"items": [
+{
+"t": "09:00",
+"w": "Groom",
+"text": "Groom arrives at the venue and waits in the car."
+},
+{
+"t": "09:05",
+"w": "Venue",
+"text": "Schedule helpers find Sugirtha and Meera to collect the araathi tray and garland for groom arrival."
+},
+{
+"t": "09:05",
+"w": "Groom",
+"text": "Appa checks the groom’s dressing is okay."
+},
+{
+"t": "09:10",
+"w": "Venue",
+"cats": [
+"mc"
+],
+"text": "MC welcome and housekeeping. The groom will enter shortly. Please remain seated for the entrance."
+},
+{
+"t": "09:10",
+"w": "Venue",
+"text": "Schedule helpers try to clear the foyer by ushering non-family guests inside."
+},
+{
+"t": "09:10",
+"w": "Groom",
+"text": "Groom’s family waits ready for the entrance, along with the family procession, drum and nathaswaram."
+},
+{
+"t": "09:15",
+"w": "Venue",
+"cats": [
+"ceremony"
+],
+"text": "Groom arrival.",
+"sub": [
+{
+"h": "Araathi and garland",
+"l": [
+"Sugirtha and Meera: araathi",
+"Thas: white garland"
+]
+}
+]
+},
+{
+"t": "09:15",
+"w": "Venue",
+"text": "Any guests who arrive during this time: schedule helpers ask them to wait in the foyer until the groom is on stage."
+},
+{
+"t": "09:15",
+"w": "Groom",
+"cats": [
+"foyer"
+],
+"text": "Groom araathi, washing of feet by groomsmen, ring gifted to groomsmen and garland offered by the bride’s father to welcome the groom."
+},
+{
+"t": "09:15",
+"w": "Venue",
+"cats": [
+"food"
+],
+"text": "Breakfast snack served to guests."
+},
+{
+"t": "09:25",
+"w": "Venue",
+"text": "Schedule helpers notify Jeyapalan of the coconut cut and seat him theatre style near the stage."
+}
+]
+},
+{
+"phase": "Ceremony",
+"items": [
+{
+"t": "09:30",
+"w": "Venue",
+"cats": [
+"ceremony"
+],
+"text": "Ganesh puja. Jeyapalan coconut cut."
+},
+{
+"t": "09:30",
+"w": "Venue",
+"text": "Schedule helpers relieve the foyer girls and take over the seating chart.",
+"cats": [
+"foyer"
+]
+},
+{
+"t": "09:40",
+"w": "Venue",
+"text": "Schedule helpers make sure the 5 ladies are ready.",
+"sub": [
+{
+"h": "Ladies",
+"l": [
+"Rohini",
+"Vanitha",
+"Tharshini",
+"Rani",
+"Thilaga"
+]
+}
+]
+},
+{
+"t": "09:45",
+"w": "Venue",
+"cats": [
+"ceremony"
+],
+"text": "Palikasthapanam with the 5 ladies."
+},
+{
+"t": "09:45",
+"w": "Venue",
+"text": "Schedule helpers make sure Jeyanathan is by the stage."
+},
+{
+"t": "09:50",
+"w": "Venue",
+"cats": [
+"ceremony"
+],
+"text": "Racha bandhan (bangle/kaapu kattudhal). Jeyanathan coconut cut."
+},
+{
+"t": "09:50",
+"w": "Venue",
+"cats": [
+"music"
+],
+"text": "MC gives Colin a heads-up of the song for the bridal entry. Song: Thozhi."
+},
+{
+"t": "09:53",
+"w": "Venue",
+"text": "Flower girls and boys ready in line-up.",
+"sub": [
+{
+"h": "Line-up",
+"l": [
+"Aanya and Amaira",
+"Kiaan and Raahi",
+"Aarya",
+"Aakriti"
+]
+}
+]
+},
+{
+"t": "09:55",
+"w": "Venue",
+"cats": [
+"mc"
+],
+"text": "MC announces the bridal entry. Guests to be seated."
+},
+{
+"t": "10:00",
+"w": "Venue",
+"text": "Bridal entrance (first saree). Cue music with the DJ once the party is ready."
+},
+{
+"t": "10:00",
+"w": "Venue",
+"cats": [
+"food"
+],
+"text": "Entree served."
+},
+{
+"t": "10:05",
+"w": "Venue",
+"text": "Schedule helpers make sure the 5 ladies are ready.",
+"sub": [
+{
+"h": "Ladies",
+"l": [
+"Gowri",
+"Danu",
+"Theepa",
+"Keetha",
+"Sugirtha"
+]
+}
+]
+},
+{
+"t": "10:10",
+"w": "Venue",
+"cats": [
+"ceremony"
+],
+"text": "Palikasthapanam with the 5 ladies."
+},
+{
+"t": "10:10",
+"w": "Venue",
+"text": "Schedule helpers make sure Balakanthan is near the stage and ready."
+},
+{
+"t": "10:15",
+"w": "Venue",
+"cats": [
+"ceremony"
+],
+"text": "Racha bandhan (bangle/kaapu kattudhal). Balakanthan coconut cut."
+},
+{
+"t": "10:20",
+"w": "Venue",
+"text": "Schedule helpers make sure Jeyakandan is near the stage and ready."
+},
+{
+"t": "10:20",
+"w": "Venue",
+"text": "Schedule helpers place some snacks and entree in the bridal room."
+},
+{
+"t": "10:25",
+"w": "Venue",
+"cats": [
+"ceremony"
+],
+"text": "Kanyathaanam. Jeyakandan coconut cut."
+},
+{
+"t": "10:30",
+"w": "Venue",
+"text": "Bride leaves for koorai change."
+},
+{
+"t": "10:30",
+"w": "Venue",
+"cats": [
+"foyer"
+],
+"text": "Theepa and Keetha prepare the milk toffee trays."
+},
+{
+"t": "10:30",
+"w": "Venue",
+"text": "Schedule helpers give the extra entree from table 23 to the groom, the thozhan and anyone who hasn’t eaten. Please eat if you haven’t."
+},
+{
+"t": "10:45",
+"w": "Venue",
+"text": "Kamakshi vizhakku ready for Anika. Hema holds it for Anika and stays on stage to help with the thali screw. Petals for blessing on stage."
+},
+{
+"t": "10:50",
+"w": "Venue",
+"cats": [
+"music"
+],
+"text": "MC gives Colin a heads-up of the song for the bridal entry. Song: Innisai."
+},
+{
+"t": "10:55",
+"w": "Venue",
+"cats": [
+"mc"
+],
+"text": "MC announces the bridal entry. Guests to be seated."
+},
+{
+"t": "10:55",
+"w": "Venue",
+"text": "Danu and Tharanya collect flower petals off the stage."
+},
+{
+"t": "10:57",
+"w": "Venue",
+"text": "Danu and Tharanya give flower petals to close family for thaali blessings."
+},
+{
+"t": "11:00",
+"w": "Venue",
+"cats": [
+"ceremony"
+],
+"text": "Bride re-entry. Cue music with the DJ."
+},
+{
+"t": "11:00",
+"w": "Venue",
+"text": "Schedule helpers make sure Srikanthan is near the stage and ready."
+},
+{
+"t": "11:00",
+"w": "Venue",
+"text": "Theepa and Keetha coordinate sweets serving after the thaali is tied.",
+"sub": [
+{
+"h": "Girls serving",
+"l": [
+"Thilakshana",
+"Shamya",
+"Kali",
+"Aaki",
+"Tharanya"
+]
+}
+]
+},
+{
+"t": "11:03",
+"w": "Venue",
+"cats": [
+"mc"
+],
+"text": "Once the bride is seated, MC announces that thali tying will happen soon. Guests who want to wish can come forward."
+},
+{
+"t": "11:05",
+"w": "Venue",
+"cats": [
+"ceremony"
+],
+"text": "Thali tying. Srikanthan coconut cut."
+},
+{
+"t": "11:30",
+"w": "Venue",
+"cats": [
+"food"
+],
+"text": "Karan confirms lunch is ready and informs Anjali (MC) and Anika."
+}
+]
+},
+{
+"phase": "Lunch and blessings",
+"items": [
+{
+"t": "11:40",
+"w": "Venue",
+"text": "Ceremony complete. Couple photos, then parents and siblings photos."
+},
+{
+"t": "11:40",
+"w": "Venue",
+"cats": [
+"mc"
+],
+"text": "Whenever lunch is ready, MC announces that guests can have lunch and asks immediate family to remain for blessings."
+},
+{
+"t": "11:50",
+"w": "Venue",
+"text": "Schedule helper instructs Hareshan, Tharanya and Anjali to rotate holding rice for blessings."
+},
+{
+"t": "11:55",
+"w": "Venue",
+"text": "Immediate family blessings. No photos yet."
+},
+{
+"t": "12:05",
+"w": "Venue",
+"cats": [
+"mc"
+],
+"text": "MC announces guests can wish the couple."
+},
+{
+"t": "12:40",
+"w": "Venue",
+"cats": [
+"foyer"
+],
+"text": "Palaharam serving at the front: Thilakshana, Shamya, Aaki and Aarya."
+},
+{
+"t": "13:05",
+"w": "Venue",
+"text": "Couple eat lunch. Any family members who haven’t eaten should eat as well."
+}
+]
+},
+{
+"phase": "Photos and close",
+"items": [
+{
+"t": "13:20",
+"w": "Venue",
+"text": "Group photos. Sugul and Rehka use the photo groups to coordinate. Ask Eshara to manage the Nish side."
+},
+{
+"t": "14:00",
+"w": "Venue",
+"text": "Couple photos in the venue: mandap, little courtyard, foyer and out the front."
+},
+{
+"t": "14:30",
+"w": "Venue",
+"text": "Service end."
+},
+{
+"t": "15:00",
+"w": "Venue",
+"text": "Leave the venue. Rasa mama takes the gifts. Senthooran and Thilakshan assist with loading items into the Kluger and cars."
+}
+]
+}
 ];
 
-var CATS=[['food','Food'],['ceremony','Ceremony / stage'],['foyer','Foyer'],['mc','MC announcement'],['music','Music']];
+var CATS=[['food','Food'],['ceremony','Ceremony / stage'],['foyer','Foyer'],['mc','MC key announcements'],['music','Music coordination']];
 var WHERES=['Venue','Bride','Groom'];
 
 function $(id){return document.getElementById(id)}
@@ -443,19 +1005,46 @@ $('f-cat').addEventListener('click',onChip);
 $('f-where').addEventListener('click',onChip);
 renderFilters();renderRun();
 
-/* ---------- tabs ---------- */
-function show(tab,push){
-  var run=tab==='run-sheet';
-  $('panel-table').hidden=run;$('panel-run').hidden=!run;
-  $('tab-table').setAttribute('aria-selected',String(!run));
-  $('tab-run').setAttribute('aria-selected',String(run));
-  if(push){try{history.replaceState(null,'','#'+(run?'run-sheet':'table'))}catch(e){}}
-  if(push)window.scrollTo(0,0);
+/* ---------- photo groups ---------- */
+var pSide='all',pq=$('pq');
+var SIDES=['Bride','Groom','Combined'];
+function renderPSide(){
+  $('p-side').innerHTML='<span class="flabel">Side</span>'+['all'].concat(SIDES).map(function(s){return '<button class="chip" type="button" data-side="'+s+'" aria-pressed="'+(pSide===s)+'">'+(s==='all'?'All':s)+'</button>'}).join('');
 }
-$('tab-table').addEventListener('click',function(){show('table',true)});
-$('tab-run').addEventListener('click',function(){show('run-sheet',true)});
-window.addEventListener('hashchange',function(){show(location.hash==='#run-sheet'?'run-sheet':'table',false)});
-show(location.hash==='#run-sheet'?'run-sheet':'table',false);
+function renderPhotos(){
+  var q=norm(pq.value),secs=[],map={},n=0;
+  PHOTOS.forEach(function(p){
+    if(pSide!=='all'&&p[0]!==pSide)return;
+    if(q&&norm(p[2]+' '+p[3]).indexOf(q)<0)return;
+    if(!map[p[1]]){map[p[1]]={timing:p[1],rows:[]};secs.push(map[p[1]])}
+    map[p[1]].rows.push(p);n++;
+  });
+  $("photolist").innerHTML=secs.length?secs.map(function(s){
+    var m=s.timing.match(/^(.*?)\s*(?: - |\()(.*?)\)?$/),main=m?m[1]:s.timing,sub=m?m[2]:'';
+    return '<section class="pgroup"><div class="phead"><h2>'+esc(main)+'</h2>'+(sub?'<span class="range">'+esc(sub)+'</span>':'')+'</div>'
+      +s.rows.map(function(p){return '<div class="pcard"><div class="pn">'+esc(p[2])+'</div><span class="pill '+p[0].toLowerCase()+'">'+esc(p[0])+'</span>'+(p[3]?'<p class="pd">'+esc(p[3])+'</p>':'')+'</div>'}).join('')
+      +'</section>';
+  }).join(''):'<p class="empty">No photo groups match. Try a different name, or choose All.</p>';
+  $('pcount').textContent=(q||pSide!=='all')?n+' of '+PHOTOS.length+' groups':PHOTOS.length+' groups, in shooting order.';
+}
+$('p-side').addEventListener('click',function(e){var b=e.target.closest('button[data-side]');if(!b)return;pSide=b.dataset.side;renderPSide();renderPhotos()});
+pq.addEventListener('input',renderPhotos);
+renderPSide();renderPhotos();
+
+/* ---------- tabs ---------- */
+var TABS={table:'tab-table',run:'tab-run',photos:'tab-photos'},HASH={table:'table','run-sheet':'run',photos:'photos'};
+function show(name,push){
+  Object.keys(TABS).forEach(function(k){
+    var on=k===name;
+    $('panel-'+k).hidden=!on;
+    $(TABS[k]).setAttribute('aria-selected',String(on));
+  });
+  if(push){try{history.replaceState(null,'','#'+(name==='run'?'run-sheet':name))}catch(e){}window.scrollTo(0,0)}
+}
+function fromHash(){return HASH[location.hash.slice(1)]||'table'}
+Object.keys(TABS).forEach(function(k){$(TABS[k]).addEventListener('click',function(){show(k,true)})});
+window.addEventListener('hashchange',function(){show(fromHash(),false)});
+show(fromHash(),false);
 render();
 })();
 </script>
